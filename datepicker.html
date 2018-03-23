@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+	<style>
+		.datepicker table {
+			margin: 50px auto;
+		}
+		.datepicker table th, .datepicker table td{
+			border: 1px solid #3385ff;
+			padding: 5px;
+			text-align: center;
+			color: #555;
+		}
+		.datepicker table td {
+			cursor: pointer;
+			font-weight: bold;
+		}
+		.datepicker .date-prev, .datepicker .date-next{
+			color: #999;
+		}
+		.datepicker .date-today {
+			color: #3385ff;
+		}
+	</style>
+</head>
+<body>
+	<div class="datepicker">
+		<table id="table" align="center">
+			<tr>
+				<td colspan="7">
+					<div style="text-align: center;"><span style="float: left;cursor: pointer;" id="prevMonth"><</span><span id="year"></span>年<span id="month"></span>月<span style="float: right;cursor: pointer;" id="nextMonth">></span></div>
+				</td>
+			</tr>
+			<tr id="table_title">
+				<th>周一</th>
+				<th>周二</th>
+				<th>周三</th>
+				<th>周四</th>
+				<th>周五</th>
+				<th>周六</th>
+				<th>周日</th>
+			</tr>
+		</table>
+	</div>
+	<script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.slim.js"></script>
+	<script type="text/javascript">
+		// 格式化日期
+		Date.prototype.Format = function (fmt) { //author: meizz
+		  const o = {
+		    "M+": this.getMonth() + 1, //月份
+		    "d+": this.getDate(), //日
+		    "h+": this.getHours(), //小时
+		    "m+": this.getMinutes(), //分
+		    "s+": this.getSeconds(), //秒
+		    "q+": Math.floor((this.getMonth() + 3) / 3), //季度
+		    "S": this.getMilliseconds() //毫秒
+		  };
+
+		  if (/(y+)/.test(fmt)) fmt = fmt.replace(RegExp.$1, (this.getFullYear() + "").substr(4 - RegExp.$1.length));
+
+		  for (let k in o)
+		    if (new RegExp("(" + k + ")").test(fmt)) fmt = fmt.replace(RegExp.$1, (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k]).substr(("" + o[k]).length)));
+		  return fmt;
+		};
+		var Calendar = function (container, options) {
+            this.$Container = $(container);//容器(table结构)
+            this.Days = [];
+            this.Year = new Date().getFullYear();
+            this.Month = new Date().getMonth() + 1;
+            this.Draw();
+            if (options) {
+            	this.DayClickHandle = options.clickHandle; 
+            }
+            var _this = this;
+            $("#prevMonth").click(function () {
+            	_this.setPrevMonth();
+            	_this.Draw();
+            })
+            $("#nextMonth").click(function () {
+            	_this.setNextMonth();
+            	_this.Draw();
+            })
+        };
+		Calendar.prototype = {
+	        getFirstDate: function (year, month) {
+	        	return new Date(year, month-1, 1);
+	        },
+	        getLastDate: function (year, month) {
+				var nextMonthFirstDate = this.getFirstDate(year, month + 1);
+				return this.getPrevDateN(nextMonthFirstDate, 1);
+			},
+			getPrevDateN: function (date, n) {
+				return new Date(date.getTime() - n * (1000*60*60*24));
+			},
+			getNextDateN: function (date, n) {
+				return new Date(date.getTime() + n * (1000*60*60*24));
+			},
+			setPrevMonth: function () {
+				this.Month--;
+				if (this.Month < 1) {
+					this.Month = 12;
+					this.Year--;
+				}
+			},
+			getWeekDay: function (date) {
+				var day = date.getDay();
+				return day === 0 ? 7 : day;
+			},
+			setNextMonth: function () {
+				this.Month++;
+				if (this.Month > 12) {
+					this.Month = 1;
+					this.Year++;
+				}
+			},
+			isDateDayEqual: function (date1, date2) {
+				return date1.Format('yyyyMMdd') === date2.Format('yyyyMMdd');
+			},
+			Draw: function () {
+				this.$Container.find("#year").text(this.Year);
+				this.$Container.find("#month").text(this.Month);
+				var firstDate = this.getFirstDate(this.Year, this.Month);
+				var lastDate = this.getLastDate(this.Year, this.Month);
+				let list = [];
+				var firstDatePoint = this.getWeekDay(firstDate);
+				var col = 6;
+				for (var i = 1; i <= col * 7; i++) {
+					if (i < firstDatePoint) {
+						list.push(this.getPrevDateN(firstDate, firstDatePoint - i));
+					} else {
+						list.push(this.getNextDateN(firstDate, i - firstDatePoint));	
+					}
+				}
+				var htmlList = [];
+				var htmlObj = [];
+				var date = null;
+				var dateString = null;
+				var dateClass = null;
+				var dateMonth = null;
+				for (var i = 0; i < col; i++) {
+					htmlObj = [];
+					htmlObj.push('<tr class="js-date">');
+					for (var j = 0; j<7; j++) {
+						date = list[i*7 + j];
+						dateString = date.Format('yyyyMMdd');
+						dateMonth = date.getMonth() + 1;
+						dateClass = '';
+						if (dateMonth > this.Month) {
+							dateClass = 'date-prev';
+						} else if (dateMonth < this.Month) {
+							dateClass = 'date-next';
+						} else {
+							if (this.isDateDayEqual(date, new Date())) {
+								dateClass = 'date-today';
+							}
+						}
+
+						htmlObj.push('<td' + (dateClass? (' class="' + dateClass + '"') : '') + ' data-date=' + dateString+ '>');
+						htmlObj.push(date.getDate());
+						htmlObj.push('</td>');
+					}
+					htmlObj.push('</tr>');
+					htmlList.push(htmlObj.join(''));
+				}
+				this.$Container.find('.js-date').remove();
+				this.$Container.append(htmlList.join(''));
+				var _this = this;
+				this.$Container.find('.js-date td').click (function () {
+					if (_this.DayClickHandle) {
+						_this.DayClickHandle($(this).data('date'));
+					}
+				})
+			}
+	    }
+
+	    var calendar = new Calendar('#table', {
+	    	clickHandle: function (date) {
+	    		alert(date);
+	    	}
+	    });
+	</script>
+</body>
+</html>
